@@ -38,44 +38,60 @@ export function MedicationInputs({ medications, onChange, rows = 3 }: Medication
   return (
     <div className="space-y-2">
       <h2 className="text-sm font-semibold tracking-wide text-slate-300 uppercase">Medication</h2>
-      <div className="grid grid-cols-12 gap-2 text-xs font-medium text-slate-500">
-        <div className="col-span-6">Name</div>
-        <div>Dose</div>
-        <div className="col-span-2">Time</div>
-        <div className="col-span-3">Notes</div>
+      <div className="overflow-x-auto">
+        <table className="min-w-[420px] w-full text-xs">
+          <thead>
+            <tr className="text-slate-500 font-medium">
+              <th className="text-left px-2 py-1 w-[32%]">Name</th>
+              <th className="text-left px-2 py-1 w-[18%]">Dose</th>
+              <th className="text-left px-2 py-1 w-[18%]">Time</th>
+              <th className="text-left px-2 py-1 w-[32%]">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {medications.slice(0, rows).map((m, i) => (
+              <tr key={i}>
+                <td className="px-2 py-1">
+                  <input
+                    className="w-full rounded bg-slate-800 border border-slate-700 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    placeholder="Name"
+                    value={m.name}
+                    onChange={(e) => update(i, 'name', e.target.value)}
+                    name={`medications[${i}][name]`}
+                  />
+                </td>
+                <td className="px-2 py-1">
+                  <input
+                    className="w-full rounded bg-slate-800 border border-slate-700 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    placeholder="Dose"
+                    value={m.dose}
+                    onChange={(e) => update(i, 'dose', e.target.value)}
+                    name={`medications[${i}][dose]`}
+                  />
+                </td>
+                <td className="px-2 py-1">
+                  <input
+                    className="w-full rounded bg-slate-800 border border-slate-700 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    placeholder="08:00"
+                    value={m.time}
+                    onChange={(e) => update(i, 'time', e.target.value)}
+                    name={`medications[${i}][time]`}
+                  />
+                </td>
+                <td className="px-2 py-1">
+                  <input
+                    className="w-full rounded bg-slate-800 border border-slate-700 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    placeholder="Notes"
+                    value={m.notes || ''}
+                    onChange={(e) => update(i, 'notes', e.target.value)}
+                    name={`medications[${i}][notes]`}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      {medications.slice(0, rows).map((m, i) => (
-        <div key={i} className="grid grid-cols-12 gap-2">
-          <input
-            className="col-span-6 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            placeholder="Name"
-            value={m.name}
-            onChange={(e) => update(i, 'name', e.target.value)}
-            name={`medications[${i}][name]`}
-          />
-          <input
-            className="col-span-2 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            placeholder="Dose"
-            value={m.dose}
-            onChange={(e) => update(i, 'dose', e.target.value)}
-            name={`medications[${i}][dose]`}
-          />
-          <input
-            className="col-span-2 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            placeholder="08:00"
-            value={m.time}
-            onChange={(e) => update(i, 'time', e.target.value)}
-            name={`medications[${i}][time]`}
-          />
-          <input
-            className="col-span-2 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            placeholder="Notes"
-            value={m.notes || ''}
-            onChange={(e) => update(i, 'notes', e.target.value)}
-            name={`medications[${i}][notes]`}
-          />
-        </div>
-      ))}
     </div>
   );
 }
