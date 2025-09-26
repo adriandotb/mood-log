@@ -22,6 +22,73 @@ function MiniSpark({ values, color }: { values: number[]; color: string }) {
   );
 }
 
+function LineChart({ days }: { days: { date: string; mood: number|null; energy: number|null; anxiety: number|null }[] }) {
+  const data = days.filter(d => d.mood !== null || d.energy !== null || d.anxiety !== null);
+  if (data.length < 2) return <div className="text-xs text-slate-500">More days needed for trend chart.</div>;
+  const width = 800;
+  const height = 160;
+  const pad = 24;
+  const metrics: { key: 'mood'|'energy'|'anxiety'; color: string; label: string }[] = [
+    { key: 'mood', color: '#6366f1', label: 'Mood' },
+    { key: 'energy', color: '#06b6d4', label: 'Energy' },
+    { key: 'anxiety', color: '#ec4899', label: 'Anxiety' },
+  ];
+  const xFor = (i: number) => pad + (i/(data.length-1))*(width - pad*2);
+  const yForVal = (v: number) => {
+    // scale 1-10 -> invert y
+    const clamped = Math.min(10, Math.max(1, v));
+    const ratio = (clamped - 1) / 9; // 0..1
+    return pad + (1 - ratio) * (height - pad*2);
+  };
+  function makePath(key: 'mood'|'energy'|'anxiety') {
+    let d = '';
+    data.forEach((pt, i) => {
+      const val = pt[key];
+      if (val == null) return;
+      const x = xFor(i);
+      const y = yForVal(val);
+      d += (d ? ' L' : 'M') + x + ' ' + y;
+    });
+    return d;
+  }
+  const yTicks = [1,3,5,7,9,10];
+  return (
+    <div className="w-full overflow-x-auto">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full min-w-[600px] h-48 select-none">
+        <rect x={0} y={0} width={width} height={height} fill="none" />
+        {yTicks.map(t => {
+          const y = yForVal(t);
+          return <g key={t}>
+            <line x1={pad} x2={width-pad} y1={y} y2={y} stroke="#1e293b" strokeDasharray="2 4" />
+            <text x={4} y={y+4} fontSize={10} fill="#64748b">{t}</text>
+          </g>;
+        })}
+        {metrics.map(m => (
+          <path key={m.key} d={makePath(m.key)} stroke={m.color} fill="none" strokeWidth={3} strokeLinecap="round" />
+        ))}
+        {data.map((pt,i) => {
+          const x = xFor(i);
+          return (
+            <g key={pt.date}>
+              <line x1={x} x2={x} y1={pad} y2={height-pad} stroke="#1e293b" strokeDasharray="1 8" />
+              {i % Math.max(1, Math.floor(data.length/10)) === 0 && (
+                <text x={x} y={height-4} fontSize={10} fill="#64748b" textAnchor="middle">{pt.date.slice(5)}</text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      <div className="flex gap-4 pt-2 flex-wrap text-xs">
+        {metrics.map(m => (
+          <div key={m.key} className="flex items-center gap-1 text-slate-300">
+            <span className="inline-block w-3 h-3 rounded-full" style={{ background: m.color }} /> {m.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function HistoryPage() {
   const [entries, setEntries] = React.useState<Entry[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -61,29 +128,72 @@ export default function HistoryPage() {
   const energyVals = flattened.map(f => (f.energy ?? 0));
   const anxietyVals = flattened.map(f => (f.anxiety ?? 0));
 
+  const [expanded, setExpanded] = React.useState<string | null>(null);
+
+  // Summary stats (last 7 days vs previous 7 if available)
+  const sortedAsc = [...flattened].reverse(); // oldest -> newest
+  const last7 = sortedAsc.slice(-7);
+  const prev7 = sortedAsc.slice(-14, -7);
+  function avg(arr: (number|null)[]) {
+    const nums = arr.filter((v): v is number => typeof v === 'number');
+    return nums.length ? nums.reduce((a,b)=>a+b,0)/nums.length : null;
+  }
+  const last7Avg = {
+    mood: avg(last7.map(d=>d.mood)),
+    energy: avg(last7.map(d=>d.energy)),
+    anxiety: avg(last7.map(d=>d.anxiety)),
+  };
+  const prev7Avg = {
+    mood: avg(prev7.map(d=>d.mood)),
+    energy: avg(prev7.map(d=>d.energy)),
+    anxiety: avg(prev7.map(d=>d.anxiety)),
+  };
+  function delta(curr: number|null, prev: number|null) {
+    if (curr==null || prev==null) return null;
+    const d = curr - prev;
+    return d;
+  }
+  const deltas = {
+    mood: delta(last7Avg.mood, prev7Avg.mood),
+    energy: delta(last7Avg.energy, prev7Avg.energy),
+    anxiety: delta(last7Avg.anxiety, prev7Avg.anxiety),
+  };
+
   return (
     <div className="space-y-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-lg font-semibold text-slate-100">History</h1>
-        <a href="/" className="text-xs text-brand-400 hover:text-brand-300 underline">Back to Entry</a>
+        <p className="text-xs text-slate-500">Daily progression & trends</p>
       </header>
       {!userId && <div className="text-sm text-slate-400">Sign in to view your history.</div>}
       {userId && (
         <div className="space-y-6">
-          <div className="flex flex-wrap gap-6 items-end">
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wide text-slate-500">Mood Trend</span>
-              <MiniSpark values={[...moodVals].reverse()} color="#6366f1" />
+          <section className="space-y-4">
+            <h2 className="text-sm font-semibold tracking-wide text-slate-300 uppercase">Daily Averages Chart</h2>
+            <LineChart days={[...flattened].reverse()} />
+          </section>
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold tracking-wide text-slate-300 uppercase">7-Day Summary</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              {(['mood','energy','anxiety'] as const).map(k => {
+                const label = k.charAt(0).toUpperCase()+k.slice(1);
+                const curr = (last7Avg as any)[k];
+                const change = (deltas as any)[k];
+                const colorMap: any = { mood:'#6366f1', energy:'#06b6d4', anxiety:'#ec4899' };
+                return (
+                  <div key={k} className="rounded-md border border-slate-800 bg-slate-900/40 p-3 flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: colorMap[k] }} />
+                      <span className="font-medium text-slate-200">{label}</span>
+                    </div>
+                    <div className="text-slate-300 text-sm">{curr?.toFixed(1) ?? '—'} <span className="text-xs text-slate-500">avg last 7</span></div>
+                    {change !== null && <div className={`text-[11px] ${change>0?'text-green-400':'text-red-400'}`}>{change>0?'+':''}{change.toFixed(2)} vs prev 7</div>}
+                    {change === null && <div className="text-[11px] text-slate-500">Need more data</div>}
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wide text-slate-500">Energy Trend</span>
-              <MiniSpark values={[...energyVals].reverse()} color="#06b6d4" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase tracking-wide text-slate-500">Anxiety Trend</span>
-              <MiniSpark values={[...anxietyVals].reverse()} color="#ec4899" />
-            </div>
-          </div>
+          </section>
           <div className="overflow-x-auto border border-slate-800 rounded-lg">
             <table className="min-w-full text-sm">
               <thead>
@@ -92,32 +202,73 @@ export default function HistoryPage() {
                   <th className="p-2 text-center font-medium">Mood (avg)</th>
                   <th className="p-2 text-center font-medium">Energy (avg)</th>
                   <th className="p-2 text-center font-medium">Anxiety (avg)</th>
+                  <th className="p-2 text-center font-medium">Filled Periods</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan={4} className="p-4 text-center text-slate-400">Loading...</td></tr>
+                  <tr><td colSpan={5} className="p-4 text-center text-slate-400">Loading...</td></tr>
                 )}
                 {!loading && !entries.length && (
-                  <tr><td colSpan={4} className="p-4 text-center text-slate-500">No entries yet.</td></tr>
+                  <tr><td colSpan={5} className="p-4 text-center text-slate-500">No entries yet.</td></tr>
                 )}
                 {!loading && entries.map(e => {
                   const f = flattened.find(f => f.date === e.date)!;
+                  const totalFilled = e.slices.reduce((acc,s)=>acc + ['mood','energy','anxiety'].filter(k=> typeof (s as any)[k] === 'number').length,0);
+                  const maxPossible = e.slices.length * 3;
+                  const pct = Math.round((totalFilled / maxPossible)*100);
+                  const isExpanded = expanded === e.date;
                   return (
-                    <tr key={e.id} className="border-t border-slate-800 hover:bg-slate-800/30">
-                      <td className="p-2 font-mono text-xs sm:text-sm text-slate-300 whitespace-nowrap">{e.date}</td>
-                      <td className="p-2 text-center text-slate-200">{f.mood?.toFixed(1) ?? '—'}</td>
-                      <td className="p-2 text-center text-slate-200">{f.energy?.toFixed(1) ?? '—'}</td>
-                      <td className="p-2 text-center text-slate-200">{f.anxiety?.toFixed(1) ?? '—'}</td>
-                    </tr>
+                    <React.Fragment key={e.id}>
+                      <tr className={`border-t border-slate-800 hover:bg-slate-800/40 cursor-pointer ${isExpanded?'bg-slate-800/40':''}`} onClick={()=> setExpanded(isExpanded? null : e.date)}>
+                        <td className="p-2 font-mono text-xs sm:text-sm text-slate-300 whitespace-nowrap">{e.date}</td>
+                        <td className="p-2 text-center text-slate-200">{f.mood?.toFixed(1) ?? '—'}</td>
+                        <td className="p-2 text-center text-slate-200">{f.energy?.toFixed(1) ?? '—'}</td>
+                        <td className="p-2 text-center text-slate-200">{f.anxiety?.toFixed(1) ?? '—'}</td>
+                        <td className="p-2 text-center text-slate-300 text-xs">{pct}%</td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="border-t border-slate-800 bg-slate-900/40">
+                          <td colSpan={5} className="p-3">
+                            <div className="flex flex-col gap-3">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {e.slices.map(s => (
+                                  <div key={s.period} className="rounded-md border border-slate-800 bg-slate-950/40 p-3 flex flex-col gap-2">
+                                    <div className="text-[11px] uppercase tracking-wide text-slate-400">{s.period}</div>
+                                    <div className="flex flex-col gap-1 text-xs">
+                                      <MetricBar label="Mood" value={s.mood} color="#6366f1" />
+                                      <MetricBar label="Energy" value={s.energy} color="#06b6d4" />
+                                      <MetricBar label="Anxiety" value={s.anxiety} color="#ec4899" />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
-                {error && <tr><td colSpan={4} className="p-4 text-center text-red-400">{error}</td></tr>}
+                {error && <tr><td colSpan={5} className="p-4 text-center text-red-400">{error}</td></tr>}
               </tbody>
             </table>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function MetricBar({ label, value, color }: { label: string; value: number; color: string }) {
+  const pct = typeof value === 'number' ? ((value-1)/9)*100 : 0;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-10 text-[11px] text-slate-400">{label}</span>
+      <div className="flex-1 h-2 rounded bg-slate-800 overflow-hidden">
+        <div className="h-full" style={{ width: pct+'%', background: color, opacity: 0.9 }} />
+      </div>
+      <span className="w-6 text-[11px] text-slate-300 tabular-nums text-right">{typeof value==='number'? value: '—'}</span>
     </div>
   );
 }
