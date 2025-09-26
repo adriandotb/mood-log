@@ -159,19 +159,19 @@ export default function HistoryPage() {
   const mapByDate = Object.fromEntries(flattened.map(f => [f.date, f] as const));
   const last7 = last7Dates.map(d => mapByDate[d] || { date: d, mood: null, energy: null, anxiety: null });
   const prev7 = prev7Dates.map(d => mapByDate[d] || { date: d, mood: null, energy: null, anxiety: null });
-  function avg(arr: (number|null)[]) {
-    const nums = arr.filter((v): v is number => typeof v === 'number');
+  function avgMetric(arr: { mood: number|null, energy: number|null, anxiety: number|null }[], key: 'mood'|'energy'|'anxiety') {
+    const nums = arr.map(d => d[key]).filter((v): v is number => typeof v === 'number');
     return nums.length ? nums.reduce((a,b)=>a+b,0)/nums.length : null;
   }
   const last7Avg = {
-    mood: avg(last7.map(d=>d.mood)),
-    energy: avg(last7.map(d=>d.energy)),
-    anxiety: avg(last7.map(d=>d.anxiety)),
+    mood: avgMetric(last7, 'mood'),
+    energy: avgMetric(last7, 'energy'),
+    anxiety: avgMetric(last7, 'anxiety'),
   };
   const prev7Avg = {
-    mood: avg(prev7.map(d=>d.mood)),
-    energy: avg(prev7.map(d=>d.energy)),
-    anxiety: avg(prev7.map(d=>d.anxiety)),
+    mood: avgMetric(prev7, 'mood'),
+    energy: avgMetric(prev7, 'energy'),
+    anxiety: avgMetric(prev7, 'anxiety'),
   };
   function delta(curr: number|null, prev: number|null) {
     if (curr==null || prev==null) return null;
@@ -256,17 +256,27 @@ export default function HistoryPage() {
                         <tr className="border-t border-slate-800 bg-slate-900/40">
                           <td colSpan={5} className="p-3">
                             <div className="flex flex-col gap-3">
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                {e.slices.map(s => (
-                                  <div key={s.period} className="rounded-md border border-slate-800 bg-slate-950/40 p-3 flex flex-col gap-2">
-                                    <div className="text-[11px] uppercase tracking-wide text-slate-400">{s.period}</div>
-                                    <div className="flex flex-col gap-1 text-xs">
-                                      <MetricBar label="Mood" value={s.mood} color="#6366f1" />
-                                      <MetricBar label="Energy" value={s.energy} color="#06b6d4" />
-                                      <MetricBar label="Anxiety" value={s.anxiety} color="#ec4899" />
-                                    </div>
-                                  </div>
-                                ))}
+                              <div className="w-full overflow-x-auto">
+                                <table className="min-w-[420px] w-full text-xs">
+                                  <thead>
+                                    <tr className="text-slate-400">
+                                      <th className="p-1 text-left">Period</th>
+                                      <th className="p-1 text-center">Mood</th>
+                                      <th className="p-1 text-center">Energy</th>
+                                      <th className="p-1 text-center">Anxiety</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {e.slices.map(s => (
+                                      <tr key={s.period} className="border-t border-slate-800">
+                                        <td className="p-1 text-left text-slate-400 font-semibold">{s.period}</td>
+                                        <td className="p-1 text-center"><MetricBar label="" value={s.mood} color="#6366f1" /></td>
+                                        <td className="p-1 text-center"><MetricBar label="" value={s.energy} color="#06b6d4" /></td>
+                                        <td className="p-1 text-center"><MetricBar label="" value={s.anxiety} color="#ec4899" /></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </td>
