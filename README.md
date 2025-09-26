@@ -83,3 +83,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 
 ## License
 MIT
+
+---
+### Changelog
+2025-09-26: Added auth + RLS documentation and initial dials UI improvements.
+2025-09-26 (minor): Trigger redeploy with small README update.
