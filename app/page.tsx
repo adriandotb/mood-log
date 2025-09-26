@@ -18,17 +18,20 @@ type RatingsState = {
 
 export default function Page() {
   const [date, setDate] = React.useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [meds, setMeds] = React.useState<MedicationEntry[]>([]);
-  const [ratings, setRatings] = React.useState<RatingsState>({
+  const emptyRatings = React.useCallback((): RatingsState => ({
     Morning: { mood: '', energy: '', anxiety: '' },
     Noon: { mood: '', energy: '', anxiety: '' },
     Afternoon: { mood: '', energy: '', anxiety: '' },
     Evening: { mood: '', energy: '', anxiety: '' },
-  });
+  }), []);
+  const [meds, setMeds] = React.useState<MedicationEntry[]>([]);
+  const [ratings, setRatings] = React.useState<RatingsState>(emptyRatings);
   const [saving, setSaving] = React.useState(false);
   const [savedId, setSavedId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [userId, setUserId] = React.useState<string | null>(null); // (optional) keep if future SSR fetch; now derived from supabase session
+  const [entryId, setEntryId] = React.useState<string | null>(null); // existing row id if editing
+  const [loadingExisting, setLoadingExisting] = React.useState(false);
 
   const periods: Period[] = ['Morning', 'Noon', 'Afternoon', 'Evening'];
   const metrics: { key: Metric; label: string; color?: string }[] = [
@@ -63,13 +66,29 @@ export default function Page() {
         slices: periods.map((period) => ({ period, ...ratings[period] })),
         created_at: new Date().toISOString(),
       };
-      // userId is guaranteed here due to early return if missing
       payload.user_id = userId;
 
-      const { data, error } = await supabase.from('mood_entries').insert(payload).select('id').single();
-      if (error) throw error;
-      setSavedId(data.id);
-      setTimeout(() => setSavedId(null), 4000);
+      let resultId: string | null = null;
+      if (entryId) {
+        // Update existing row
+        const { data, error } = await supabase
+          .from('mood_entries')
+          .update({ medications: payload.medications, slices: payload.slices })
+          .eq('id', entryId)
+          .select('id')
+          .single();
+        if (error) throw error;
+        resultId = data.id;
+      } else {
+        const { data, error } = await supabase.from('mood_entries').insert(payload).select('id').single();
+        if (error) throw error;
+        resultId = data.id;
+        setEntryId(resultId);
+      }
+      if (resultId) {
+        setSavedId(resultId);
+        setTimeout(() => setSavedId(null), 4000);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -84,6 +103,52 @@ export default function Page() {
     });
     return () => { sub.subscription.unsubscribe(); };
   }, []);
+
+  // Load existing entry for selected date (if any) when user or date changes
+  React.useEffect(() => {
+    if (!userId || !date) {
+      setEntryId(null);
+      return;
+    }
+    let active = true;
+    async function load() {
+      setLoadingExisting(true);
+      const { data, error } = await supabase
+        .from('mood_entries')
+        .select('id,slices,medications')
+        .eq('user_id', userId)
+        .eq('date', date)
+        .single();
+      if (!active) return;
+      if (error) {
+        // If no row found, reset state (only if error details indicate no rows) else show error
+        if (error.code === 'PGRST116' || /row/i.test(error.message)) {
+          setEntryId(null);
+          setRatings(emptyRatings());
+          setMeds([]);
+        } else {
+          console.warn('Fetch existing entry error', error.message);
+        }
+      } else if (data) {
+        setEntryId(data.id);
+        // Populate ratings from slices
+        const next = emptyRatings();
+        (data.slices as any[]).forEach((s) => {
+          const p: Period = s.period;
+          if (next[p]) {
+            next[p].mood = typeof s.mood === 'number' ? s.mood : '';
+            next[p].energy = typeof s.energy === 'number' ? s.energy : '';
+            next[p].anxiety = typeof s.anxiety === 'number' ? s.anxiety : '';
+          }
+        });
+        setRatings(next);
+        setMeds(Array.isArray(data.medications) ? data.medications : []);
+      }
+      setLoadingExisting(false);
+    }
+    load();
+    return () => { active = false; };
+  }, [userId, date, emptyRatings]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
@@ -147,7 +212,7 @@ export default function Page() {
           disabled={saving || !userId}
           className="px-6 py-2 rounded bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium shadow"
         >
-          {saving ? 'Saving...' : (!userId ? 'Sign in to Save' : 'Save Entry')}
+          {saving ? (entryId ? 'Updating...' : 'Saving...') : (!userId ? 'Sign in to Save' : (entryId ? 'Update Entry' : 'Save Entry'))}
         </button>
         {savedId && <span className="text-sm text-green-400">Saved!</span>}
         {error && <span className="text-sm text-red-400">{error}</span>}
