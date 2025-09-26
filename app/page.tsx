@@ -2,6 +2,7 @@
 import React from 'react';
 import { MedicationInputs, MedicationEntry } from '@/components/MedicationInputs';
 import { DialInput } from '@/components/DialInput';
+import { AuthPanel } from '@/components/AuthPanel';
 import { supabase } from '../lib.supabase';
 
 
@@ -28,6 +29,7 @@ export default function Page() {
   const [saving, setSaving] = React.useState(false);
   const [savedId, setSavedId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [userId, setUserId] = React.useState<string | null>(null);
 
   const periods: Period[] = ['Morning', 'Noon', 'Afternoon', 'Evening'];
   const metrics: { key: Metric; label: string; color?: string }[] = [
@@ -49,12 +51,13 @@ export default function Page() {
     setError(null);
 
     try {
-      const payload = {
+      const payload: any = {
         date,
         medications: meds.filter((m: MedicationEntry) => m.name || m.dose || m.time),
         slices: periods.map((period) => ({ period, ...ratings[period] })),
         created_at: new Date().toISOString(),
       };
+      if (userId) payload.user_id = userId;
 
       const { data, error } = await supabase.from('mood_entries').insert(payload).select('id').single();
       if (error) throw error;
@@ -69,6 +72,13 @@ export default function Page() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      <div className="flex justify-between flex-col sm:flex-row gap-4 items-start">
+        <div>
+          <h2 className="sr-only">Authentication</h2>
+          <AuthPanel onAuth={(u) => setUserId(u?.id ?? null)} />
+        </div>
+        {userId && <div className="text-xs text-green-400">Tracking as user</div>}
+      </div>
       <section className="space-y-4">
         <div className="flex flex-wrap gap-4 items-end">
           <div className="flex flex-col">
