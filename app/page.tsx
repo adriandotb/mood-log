@@ -73,11 +73,14 @@ export default function Page() {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       <div className="flex justify-between flex-col sm:flex-row gap-4 items-start">
-        <div>
+        <div className="flex flex-col gap-2">
           <h2 className="sr-only">Authentication</h2>
           <AuthPanel onAuth={(u) => setUserId(u?.id ?? null)} />
         </div>
-        {userId && <div className="text-xs text-green-400">Tracking as user</div>}
+        <div className="flex items-center gap-4 self-start">
+          {userId && <div className="text-xs text-green-400">Tracking as user</div>}
+          <a href="/history" className="text-xs text-brand-400 hover:text-brand-300 underline">History</a>
+        </div>
       </div>
       <section className="space-y-4">
         <div className="flex flex-wrap gap-4 items-end">

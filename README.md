@@ -78,6 +78,23 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 - Add the 2 env vars
 - Deploy
 
+## How Email/Password Auth Works Now
+The app provides a compact sign in / sign up toggle (same panel). Choose Sign Up to create an account with email + password. After creation you are immediately signed in (no email verification flow required unless you enable it in Supabase settings). Switch to Sign In to log into an existing account. Use Sign Out to end the session.
+
+Supabase Setup:
+- In the Supabase Dashboard > Authentication > Providers: Ensure Email/Password is enabled.
+- (Optional) Turn OFF "Confirm email" for faster onboarding (or leave it on if you want verification emails).
+- (Optional) Enable rate limits / password rules as desired.
+
+RLS still applies: rows are inserted with `user_id` only when authenticated. History queries filter by the current user's id.
+
+Security Tips:
+- Never commit service_role keys. Only the anon key is in the frontend.
+- If enabling email confirmation, handle the "user must confirm" error in the panel (currently it will just display the error text).
+
+History Page:
+- Visit /history (link in the top-right) to view last 60 entries (date + average mood/energy/anxiety) plus mini sparkline trends.
+
 ## Customization
 - Edit colors in `tailwind.config.ts` or extend CSS variables in `app/globals.css`.
 
