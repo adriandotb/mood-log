@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #0e1117;
+  --color-card: #1b2230;
+  --color-border: #2a3443;
+}
+
+body {
+  @apply bg-slate-950 text-slate-100 antialiased;
+}
