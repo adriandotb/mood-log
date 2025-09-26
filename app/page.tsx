@@ -150,6 +150,17 @@ export default function Page() {
     return () => { active = false; };
   }, [userId, date, emptyRatings]);
 
+  // Safety: if meds array gets emptied externally, repopulate 3 blank rows
+  React.useEffect(() => {
+    if (meds.length === 0) {
+      setMeds([
+        { name: '', dose: '', time: '' },
+        { name: '', dose: '', time: '' },
+        { name: '', dose: '', time: '' },
+      ]);
+    }
+  }, [meds]);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Auth controls moved to header; we still maintain userId for insert gating */}

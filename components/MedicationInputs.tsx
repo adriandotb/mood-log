@@ -31,8 +31,9 @@ export function MedicationInputs({ medications, onChange, rows = 3 }: Medication
 
   React.useEffect(() => {
     ensureLength();
+    // Re-run when medications length shrinks (e.g., reset after date change)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows]);
+  }, [rows, medications.length]);
 
   return (
     <div className="space-y-2">
