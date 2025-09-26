@@ -69,7 +69,8 @@ create policy "Temp anonymous insert" on public.mood_entries for insert with che
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-# (Optional) Turn on email auth (magic link) in Supabase dashboard Auth settings.
+NEXT_PUBLIC_SITE_URL=https://your-production-domain (or http://localhost:3000 for dev)
+# Used for email confirmation / redirect after sign up.
 ```
 
 ## Deployment (Vercel)
@@ -85,6 +86,7 @@ Supabase Setup:
 - In the Supabase Dashboard > Authentication > Providers: Ensure Email/Password is enabled.
 - (Optional) Turn OFF "Confirm email" for faster onboarding (or leave it on if you want verification emails).
 - (Optional) Enable rate limits / password rules as desired.
+ - If email confirmation ON: add your production domain and http://localhost:3000 under Auth > URL Configuration. Also set NEXT_PUBLIC_SITE_URL so sign-up redirect works.
 
 RLS still applies: rows are inserted with `user_id` only when authenticated. History queries filter by the current user's id.
 

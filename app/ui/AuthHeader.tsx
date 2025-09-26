@@ -30,7 +30,8 @@ export default function AuthHeader() {
     setLoading(true); setError(null); setInfo(null);
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}`;
+        const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
         if (error) throw error;
         setInfo('Account created.');
       } else {
