@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "framework": "nextjs",
+  "env": {
+    "NEXT_RUNTIME": "edge"
+  },
+  "routes": [
+    { "src": "/status", "dest": "/status" }
+  ]
+}
