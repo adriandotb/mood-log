@@ -23,9 +23,21 @@ function MiniSpark({ values, color }: { values: number[]; color: string }) {
 }
 
 function LineChart({ days }: { days: { date: string; mood: number|null; energy: number|null; anxiety: number|null }[] }) {
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = React.useState(600);
+  React.useEffect(() => {
+    if (!containerRef.current) return;
+    const obs = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        setWidth(Math.max(320, w));
+      }
+    });
+    obs.observe(containerRef.current);
+    return () => obs.disconnect();
+  }, []);
   const data = days.filter(d => d.mood !== null || d.energy !== null || d.anxiety !== null);
   if (data.length < 2) return <div className="text-xs text-slate-500">More days needed for trend chart.</div>;
-  const width = 800;
   const height = 160;
   const pad = 24;
   const metrics: { key: 'mood'|'energy'|'anxiety'; color: string; label: string }[] = [
@@ -53,8 +65,8 @@ function LineChart({ days }: { days: { date: string; mood: number|null; energy: 
   }
   const yTicks = [1,3,5,7,9,10];
   return (
-    <div className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full min-w-[600px] h-48 select-none">
+    <div ref={containerRef} className="w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-48 select-none">
         <rect x={0} y={0} width={width} height={height} fill="none" />
         {yTicks.map(t => {
           const y = yForVal(t);
@@ -131,9 +143,22 @@ export default function HistoryPage() {
   const [expanded, setExpanded] = React.useState<string | null>(null);
 
   // Summary stats (last 7 days vs previous 7 if available)
-  const sortedAsc = [...flattened].reverse(); // oldest -> newest
-  const last7 = sortedAsc.slice(-7);
-  const prev7 = sortedAsc.slice(-14, -7);
+  // Last 7 calendar days (including today) even if missing entries
+  const today = new Date();
+  function fmt(d: Date) { return d.toISOString().slice(0,10); }
+  const last7Dates: string[] = Array.from({ length: 7 }).map((_,i) => {
+    const dt = new Date(today);
+    dt.setDate(today.getDate() - (6 - i));
+    return fmt(dt);
+  });
+  const prev7Dates: string[] = Array.from({ length: 7 }).map((_,i) => {
+    const dt = new Date(today);
+    dt.setDate(today.getDate() - 7 - (6 - i));
+    return fmt(dt);
+  });
+  const mapByDate = Object.fromEntries(flattened.map(f => [f.date, f] as const));
+  const last7 = last7Dates.map(d => mapByDate[d] || { date: d, mood: null, energy: null, anxiety: null });
+  const prev7 = prev7Dates.map(d => mapByDate[d] || { date: d, mood: null, energy: null, anxiety: null });
   function avg(arr: (number|null)[]) {
     const nums = arr.filter((v): v is number => typeof v === 'number');
     return nums.length ? nums.reduce((a,b)=>a+b,0)/nums.length : null;

@@ -4,6 +4,7 @@ export interface MedicationEntry {
   name: string;
   dose: string;
   time: string;
+  notes?: string;
 }
 
 interface MedicationInputsProps {
@@ -15,7 +16,7 @@ interface MedicationInputsProps {
 export function MedicationInputs({ medications, onChange, rows = 3 }: MedicationInputsProps) {
   const update = (index: number, field: keyof MedicationEntry, value: string) => {
     const next = [...medications];
-    next[index] = { ...next[index], [field]: value };
+  next[index] = { ...next[index], [field]: value } as MedicationEntry;
     onChange(next);
   };
 
@@ -23,7 +24,7 @@ export function MedicationInputs({ medications, onChange, rows = 3 }: Medication
     if (medications.length < rows) {
       onChange([
         ...medications,
-        ...Array.from({ length: rows - medications.length }).map(() => ({ name: '', dose: '', time: '' }))
+        ...Array.from({ length: rows - medications.length }).map(() => ({ name: '', dose: '', time: '', notes: '' }))
       ]);
     }
   };
@@ -68,6 +69,8 @@ export function MedicationInputs({ medications, onChange, rows = 3 }: Medication
           <input
             className="col-span-2 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             placeholder="Notes"
+            value={m.notes || ''}
+            onChange={(e) => update(i, 'notes', e.target.value)}
             name={`medications[${i}][notes]`}
           />
         </div>

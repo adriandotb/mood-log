@@ -25,7 +25,7 @@ export default function Page() {
     Evening: { mood: '', energy: '', anxiety: '' },
   }), []);
   const [meds, setMeds] = React.useState<MedicationEntry[]>([]);
-  const [ratings, setRatings] = React.useState<RatingsState>(emptyRatings);
+  const [ratings, setRatings] = React.useState<RatingsState>(emptyRatings());
   const [saving, setSaving] = React.useState(false);
   const [savedId, setSavedId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -125,7 +125,7 @@ export default function Page() {
         if (error.code === 'PGRST116' || /row/i.test(error.message)) {
           setEntryId(null);
           setRatings(emptyRatings());
-          setMeds([]);
+          setMeds([{ name: '', dose: '', time: '' }, { name: '', dose: '', time: '' }, { name: '', dose: '', time: '' }]);
         } else {
           console.warn('Fetch existing entry error', error.message);
         }
