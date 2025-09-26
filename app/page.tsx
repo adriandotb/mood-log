@@ -50,6 +50,13 @@ export default function Page() {
     setSaving(true);
     setError(null);
 
+    if (!userId) {
+      // If RLS is enabled and policy requires auth.uid() = user_id, block early
+      setError('You must sign in before saving (RLS enforced).');
+      setSaving(false);
+      return;
+    }
+
     try {
       const payload: any = {
         date,
@@ -57,7 +64,8 @@ export default function Page() {
         slices: periods.map((period) => ({ period, ...ratings[period] })),
         created_at: new Date().toISOString(),
       };
-      if (userId) payload.user_id = userId;
+      // userId is guaranteed here due to early return if missing
+      payload.user_id = userId;
 
       const { data, error } = await supabase.from('mood_entries').insert(payload).select('id').single();
       if (error) throw error;
@@ -138,10 +146,10 @@ export default function Page() {
       <div className="flex items-center gap-4">
         <button
           type="submit"
-            disabled={saving}
-            className="px-6 py-2 rounded bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium shadow"
+          disabled={saving || !userId}
+          className="px-6 py-2 rounded bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium shadow"
         >
-          {saving ? 'Saving...' : 'Save Entry'}
+          {saving ? 'Saving...' : (!userId ? 'Sign in to Save' : 'Save Entry')}
         </button>
         {savedId && <span className="text-sm text-green-400">Saved!</span>}
         {error && <span className="text-sm text-red-400">{error}</span>}
